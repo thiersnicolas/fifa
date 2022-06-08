@@ -2,11 +2,11 @@ package be.hogent.fifa.controllers;
 
 import be.hogent.fifa.domain.Stadion;
 import be.hogent.fifa.domain.Wedstrijd;
-import be.hogent.fifa.domain.WedstrijdTicket;
 import be.hogent.fifa.repositories.StadionDao;
 import be.hogent.fifa.repositories.WedstrijdDao;
 import be.hogent.fifa.repositories.WedstrijdTicketDao;
 import be.hogent.fifa.repositories.inmemory.InMemDB;
+import be.hogent.fifa.services.VoetbalService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +38,8 @@ public class FifaDBFiller {
     WedstrijdDao wedstrijdDao;
     @Autowired
     WedstrijdTicketDao wedstrijdTicketDao;
+    @Autowired
+    VoetbalService voetbalService;
 
     @BeforeAll
     void setup() {
@@ -56,10 +58,9 @@ public class FifaDBFiller {
 
     @Test
     @Disabled
-    void testGetWedstrijd() throws Exception {
+    void fillDB() throws Exception {
         //given
         Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
-        Map<UUID, WedstrijdTicket> tickets = (Map<UUID, WedstrijdTicket>) ReflectionTestUtils.getField(InMemDB.DB, "tickets");
         stadions.values()
                 .forEach(stadion -> {
                     Stadion persistedStadion = new Stadion(stadion.getNaam(), stadion.getAantalPlaatsen());
@@ -70,14 +71,6 @@ public class FifaDBFiller {
                                         wedstrijd.getTijdstip(), persistedStadion,
                                         wedstrijd.getAantalBeschikbarePlaatsen());
                                 wedstrijdDao.insert(persistedWedstrijd);
-                                tickets.values().stream()
-                                        .filter(wedstrijdTicket -> wedstrijdTicket.getWedstrijd().getId().equals(wedstrijd.getId()))
-                                        .forEach(wedstrijdTicket ->
-                                                wedstrijdTicketDao.insert(new WedstrijdTicket(
-                                                        wedstrijdTicket.getEmail(), wedstrijdTicket.getVoetbalCode1(),
-                                                        wedstrijdTicket.getVoetbalCode2(), persistedWedstrijd)
-                                                )
-                                        );
                             });
                 });
     }

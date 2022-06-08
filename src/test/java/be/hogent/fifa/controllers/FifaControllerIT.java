@@ -74,7 +74,6 @@ public class FifaControllerIT {
         );
 
         Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
-        Map<UUID, WedstrijdTicket> tickets = (Map<UUID, WedstrijdTicket>) ReflectionTestUtils.getField(InMemDB.DB, "tickets");
         stadions.values()
                 .forEach(stadion -> {
                     Stadion persistedStadion = new Stadion(stadion.getNaam(), stadion.getAantalPlaatsen());
@@ -85,12 +84,6 @@ public class FifaControllerIT {
                                         wedstrijd.getTijdstip(), persistedStadion,
                                         wedstrijd.getAantalBeschikbarePlaatsen());
                                 wedstrijdDao.insert(persistedWedstrijd);
-                                tickets.values().forEach(wedstrijdTicket ->
-                                        wedstrijdTicketDao.insert(new WedstrijdTicket(
-                                                wedstrijdTicket.getEmail(), wedstrijdTicket.getVoetbalCode1(),
-                                                wedstrijdTicket.getVoetbalCode2(), persistedWedstrijd)
-                                        )
-                                );
                             });
                 });
     }
@@ -212,10 +205,10 @@ public class FifaControllerIT {
         assertThat(wedstrijdDao.get(wedstrijd.getId()).getAantalBeschikbarePlaatsen())
                 .isEqualTo(aantalBeschikbareTicketsVoorTest - 1);
 
-        List<Map<String,Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
+        List<Map<String, Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
         assertThat(dbResults.size()).isEqualTo(1);
 
-        Map<String,Object> DBresult = dbResults.get(0);
+        Map<String, Object> DBresult = dbResults.get(0);
         assertThat(DBresult.get("email")).isEqualTo(email);
         assertThat(DBresult.get("voetbal_code1")).isEqualTo(10);
         assertThat(DBresult.get("voetbal_code2")).isEqualTo(25);
@@ -251,7 +244,7 @@ public class FifaControllerIT {
         assertThat(result).isEqualTo("wedstrijdView");
         assertThat(wedstrijdDao.get(wedstrijd.getId()).getAantalBeschikbarePlaatsen()).isEqualTo(aantalBeschikbareTicketsVoorTest);
 
-        List<Map<String,Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
+        List<Map<String, Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
         assertThat(dbResults.size()).isEqualTo(0);
 
         assertThat(fieldCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1", "aantal", "email");
@@ -292,7 +285,7 @@ public class FifaControllerIT {
         assertThat(result).isEqualTo("wedstrijdView");
         assertThat(wedstrijdDao.get(wedstrijd.getId()).getAantalBeschikbarePlaatsen()).isEqualTo(aantalBeschikbareTicketsVoorTest);
 
-        List<Map<String,Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
+        List<Map<String, Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
         assertThat(dbResults.size()).isEqualTo(0);
 
         assertThat(fieldCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1", "voetbalCode2", "aantal");
