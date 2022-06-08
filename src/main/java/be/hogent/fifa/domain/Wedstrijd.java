@@ -56,6 +56,10 @@ public class Wedstrijd {
         this.aantalBeschikbarePlaatsen = aantalBeschikbarePlaatsen;
     }
 
+    public static Wedstrijd withUUID(String land1, String land2, ZonedDateTime tijdstip, Stadion stadion, int aantalBeschikbarePlaatsen) {
+        return new Wedstrijd(UUID.randomUUID(), land1, land2, tijdstip, stadion, aantalBeschikbarePlaatsen);
+    }
+
     public int getAantalBeschikbareTickets(int aantal) {
         int beschikbareTickets = getAantalBeschikbarePlaatsen();
         if (aantal <= 0) {
@@ -93,6 +97,11 @@ public class Wedstrijd {
 
     public int getAantalBeschikbarePlaatsen() {
         return aantalBeschikbarePlaatsen;
+    }
+
+    public Wedstrijd verminderAantalBeschikbarePlaatsen(int verkochteTickets) {
+        this.aantalBeschikbarePlaatsen -= verkochteTickets;
+        return this;
     }
 
     @Override

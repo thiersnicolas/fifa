@@ -25,28 +25,28 @@ public enum InMemDB {
                 .forEach(stadion -> stadions.put(stadion.getId(), stadion));
 
         wedstrijden = new HashMap<>();
-        Wedstrijd wedstrijdBelgieCanada = new InMemWedstrijd("België", "Canada",
+        Wedstrijd wedstrijdBelgieCanada = Wedstrijd.withUUID("België", "Canada",
                 ZonedDateTime.of(2022, 11, 26, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlBayt, stadionAlBayt.getAantalPlaatsen());
-        Wedstrijd wedstrijdBrazilieZwitserland = new InMemWedstrijd("Brazilië", "Zwitserland",
+        Wedstrijd wedstrijdBrazilieZwitserland = Wedstrijd.withUUID("Brazilië", "Zwitserland",
                 ZonedDateTime.of(2022, 11, 27, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlThumamaStadion, stadionAlThumamaStadion.getAantalPlaatsen());
-        Wedstrijd wedstrijdMarrokoKroatie = new InMemWedstrijd("Marroko", "Kroatië",
+        Wedstrijd wedstrijdMarrokoKroatie = Wedstrijd.withUUID("Marroko", "Kroatië",
                 ZonedDateTime.of(2022, 11, 28, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlBayt, stadionAlBayt.getAantalPlaatsen());
-        Wedstrijd wedstrijdSpanjeDuitsland = new InMemWedstrijd("Spanje", "Duitsland",
+        Wedstrijd wedstrijdSpanjeDuitsland = Wedstrijd.withUUID("Spanje", "Duitsland",
                 ZonedDateTime.of(2022, 11, 28, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlThumamaStadion, stadionAlThumamaStadion.getAantalPlaatsen());
-        Wedstrijd wedstrijdFrankrijkDenemarken = new InMemWedstrijd("Frankrijk", "Denemarken",
+        Wedstrijd wedstrijdFrankrijkDenemarken = Wedstrijd.withUUID("Frankrijk", "Denemarken",
                 ZonedDateTime.of(2022, 11, 30, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlBayt, stadionAlBayt.getAantalPlaatsen());
-        Wedstrijd wedstrijdArgentinieMexico = new InMemWedstrijd("Argentinië", "Mexico",
+        Wedstrijd wedstrijdArgentinieMexico = Wedstrijd.withUUID("Argentinië", "Mexico",
                 ZonedDateTime.of(2022, 11, 30, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlThumamaStadion, stadionAlThumamaStadion.getAantalPlaatsen());
-        Wedstrijd wedstrijdEngelandUSA = new InMemWedstrijd("Engeland", "USA",
+        Wedstrijd wedstrijdEngelandUSA = Wedstrijd.withUUID("Engeland", "USA",
                 ZonedDateTime.of(2022, 12, 1, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlBayt, stadionAlBayt.getAantalPlaatsen());
-        Wedstrijd wedstrijdNederlandQatar = new InMemWedstrijd("Nederland", "Qatar",
+        Wedstrijd wedstrijdNederlandQatar = Wedstrijd.withUUID("Nederland", "Qatar",
                 ZonedDateTime.of(2022, 12, 1, 9, 0, 0, 0,
                         ZoneId.of("CET")), stadionAlThumamaStadion, stadionAlThumamaStadion.getAantalPlaatsen());
 

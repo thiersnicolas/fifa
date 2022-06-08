@@ -70,12 +70,14 @@ public class FifaDBFiller {
                                         wedstrijd.getTijdstip(), persistedStadion,
                                         wedstrijd.getAantalBeschikbarePlaatsen());
                                 wedstrijdDao.insert(persistedWedstrijd);
-                                tickets.values().forEach(wedstrijdTicket ->
-                                        wedstrijdTicketDao.insert(new WedstrijdTicket(
-                                                wedstrijdTicket.getEmail(), wedstrijdTicket.getVoetbalCode1(),
-                                                wedstrijdTicket.getVoetbalCode2(), persistedWedstrijd)
-                                        )
-                                );
+                                tickets.values().stream()
+                                        .filter(wedstrijdTicket -> wedstrijdTicket.getWedstrijd().getId().equals(wedstrijd.getId()))
+                                        .forEach(wedstrijdTicket ->
+                                                wedstrijdTicketDao.insert(new WedstrijdTicket(
+                                                        wedstrijdTicket.getEmail(), wedstrijdTicket.getVoetbalCode1(),
+                                                        wedstrijdTicket.getVoetbalCode2(), persistedWedstrijd)
+                                                )
+                                        );
                             });
                 });
     }

@@ -21,13 +21,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -75,6 +72,27 @@ public class FifaControllerIT {
                         .password(password)
                         .build()
         );
+
+        Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
+        Map<UUID, WedstrijdTicket> tickets = (Map<UUID, WedstrijdTicket>) ReflectionTestUtils.getField(InMemDB.DB, "tickets");
+        stadions.values()
+                .forEach(stadion -> {
+                    Stadion persistedStadion = new Stadion(stadion.getNaam(), stadion.getAantalPlaatsen());
+                    stadionDao.insert(persistedStadion);
+                    stadion.getWedstrijden()
+                            .forEach(wedstrijd -> {
+                                Wedstrijd persistedWedstrijd = new Wedstrijd(wedstrijd.getLand1(), wedstrijd.getLand2(),
+                                        wedstrijd.getTijdstip(), persistedStadion,
+                                        wedstrijd.getAantalBeschikbarePlaatsen());
+                                wedstrijdDao.insert(persistedWedstrijd);
+                                tickets.values().forEach(wedstrijdTicket ->
+                                        wedstrijdTicketDao.insert(new WedstrijdTicket(
+                                                wedstrijdTicket.getEmail(), wedstrijdTicket.getVoetbalCode1(),
+                                                wedstrijdTicket.getVoetbalCode2(), persistedWedstrijd)
+                                        )
+                                );
+                            });
+                });
     }
 
     @AfterAll
@@ -124,16 +142,6 @@ public class FifaControllerIT {
     void testToonWedstrijden() throws Exception {
         //given
         Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
-        stadions.values()
-                .forEach(stadion -> {
-                    Stadion persistedStadion = new Stadion(stadion.getNaam(), stadion.getAantalPlaatsen());
-                    stadionDao.insert(persistedStadion);
-                    stadion.getWedstrijden()
-                            .forEach(wedstrijd ->
-                                    wedstrijdDao.insert(new Wedstrijd(wedstrijd.getLand1(), wedstrijd.getLand2(),
-                                            wedstrijd.getTijdstip(), persistedStadion,
-                                            wedstrijd.getAantalBeschikbarePlaatsen())));
-                });
         Stadion stadion = stadions.values().stream().findFirst().get();
 
         StadionCommand stadionCommand = new StadionCommand();
@@ -161,33 +169,13 @@ public class FifaControllerIT {
     void testGetWedstrijd() throws Exception {
         //given
         Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
-        Map<UUID, WedstrijdTicket> tickets = (Map<UUID, WedstrijdTicket>) ReflectionTestUtils.getField(InMemDB.DB, "tickets");
-        stadions.values()
-                .forEach(stadion -> {
-                    Stadion persistedStadion = new Stadion(stadion.getNaam(), stadion.getAantalPlaatsen());
-                    stadionDao.insert(persistedStadion);
-                    stadion.getWedstrijden()
-                            .forEach(wedstrijd -> {
-                                Wedstrijd persistedWedstrijd = new Wedstrijd(wedstrijd.getLand1(), wedstrijd.getLand2(),
-                                        wedstrijd.getTijdstip(), persistedStadion,
-                                        wedstrijd.getAantalBeschikbarePlaatsen());
-                                wedstrijdDao.insert(persistedWedstrijd);
-                                tickets.values().forEach(wedstrijdTicket ->
-                                        wedstrijdTicketDao.insert(new WedstrijdTicket(
-                                                wedstrijdTicket.getEmail(), wedstrijdTicket.getVoetbalCode1(),
-                                                wedstrijdTicket.getVoetbalCode2(), persistedWedstrijd)
-                                        )
-                                );
-                            });
-                });
         Stadion stadion = stadions.values().stream().findFirst().get();
+        Wedstrijd wedstrijd = stadionDao.getByNaam(stadion.getNaam()).getWedstrijden().get(0);
 
         Model model = Mockito.mock(Model.class);
         ArgumentCaptor<Wedstrijd> wedstrijdCaptor = ArgumentCaptor.forClass(Wedstrijd.class);
         when(model.addAttribute(eq("wedstrijd"), wedstrijdCaptor.capture())).thenReturn(model);
         when(model.addAttribute(eq("ticketsCommand"), any(TicketsCommand.class))).thenReturn(model);
-
-        Wedstrijd wedstrijd = stadionDao.getByNaam(stadion.getNaam()).getWedstrijden().get(0);
 
         //when
         var result = subject.getWedstrijd(wedstrijd.getId().toString(), model);
@@ -195,6 +183,124 @@ public class FifaControllerIT {
         //then
         assertThat(result).isEqualTo("wedstrijdView");
         assertThat(wedstrijdCaptor.getValue()).isEqualTo(wedstrijd);
+    }
+
+    @Test
+    public void testBestelTickets_noErrors() {
+        //given
+        Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
+        Stadion stadion = stadions.values().stream().findFirst().get();
+        Wedstrijd wedstrijd = stadionDao.getByNaam(stadion.getNaam()).getWedstrijden().get(0);
+
+        BindingResult bindingResult = Mockito.mock(BindingResult.class);
+        when(bindingResult.hasErrors()).thenReturn(false);
+
+        String email = "valid@ok.com";
+        TicketsCommand ticketsCommand = new TicketsCommand();
+        ticketsCommand.setEmail(email);
+        ticketsCommand.setAantal("1");
+        ticketsCommand.setVoetbalCode1("10");
+        ticketsCommand.setVoetbalCode2("25");
+
+        int aantalBeschikbareTicketsVoorTest = wedstrijd.getAantalBeschikbarePlaatsen();
+
+        //when
+        var result = subject.bestelTickets(wedstrijd.getId().toString(), ticketsCommand, bindingResult, Mockito.mock(Model.class));
+
+        //then
+        assertThat(result).isEqualTo("redirect:/fifa?verkocht=1");
+        assertThat(wedstrijdDao.get(wedstrijd.getId()).getAantalBeschikbarePlaatsen())
+                .isEqualTo(aantalBeschikbareTicketsVoorTest - 1);
+
+        List<Map<String,Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
+        assertThat(dbResults.size()).isEqualTo(1);
+
+        Map<String,Object> DBresult = dbResults.get(0);
+        assertThat(DBresult.get("email")).isEqualTo(email);
+        assertThat(DBresult.get("voetbal_code1")).isEqualTo(10);
+        assertThat(DBresult.get("voetbal_code2")).isEqualTo(25);
+    }
+
+    @Test
+    public void testBestelTickets_hasErrors_backToWedstrijdView() {
+        //given
+        Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
+        Stadion stadion = stadions.values().stream().findFirst().get();
+        Wedstrijd wedstrijd = stadionDao.getByNaam(stadion.getNaam()).getWedstrijden().get(0);
+
+        BindingResult bindingResult = Mockito.mock(BindingResult.class);
+        ArgumentCaptor<String> fieldCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> errorCodeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> defaultMessageCaptor = ArgumentCaptor.forClass(String.class);
+        doNothing().when(bindingResult).rejectValue(fieldCaptor.capture(), errorCodeCaptor.capture(), defaultMessageCaptor.capture());
+        when(bindingResult.hasErrors()).thenReturn(true);
+
+        String email = "NotOK";
+        TicketsCommand ticketsCommand = new TicketsCommand();
+        ticketsCommand.setEmail(email);
+        ticketsCommand.setAantal("-5");
+        ticketsCommand.setVoetbalCode1("30");
+        ticketsCommand.setVoetbalCode2("10");
+
+        int aantalBeschikbareTicketsVoorTest = wedstrijd.getAantalBeschikbarePlaatsen();
+
+        //when
+        var result = subject.bestelTickets(wedstrijd.getId().toString(), ticketsCommand, bindingResult, Mockito.mock(Model.class));
+
+        //then
+        assertThat(result).isEqualTo("wedstrijdView");
+        assertThat(wedstrijdDao.get(wedstrijd.getId()).getAantalBeschikbarePlaatsen()).isEqualTo(aantalBeschikbareTicketsVoorTest);
+
+        List<Map<String,Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
+        assertThat(dbResults.size()).isEqualTo(0);
+
+        assertThat(fieldCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1", "aantal", "email");
+        assertThat(errorCodeCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1.kleinerDan", "aantalTickets.kleiner", "email.at");
+        assertThat(defaultMessageCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1 moet kleiner zijn dan voetbalCode2",
+                "aantal tickets moet groter of gelijk zijn aan 1",
+                "geen geldig email");
+
+    }
+
+    @Test
+    public void testBestelTickets_hasErrors2_backToWedstrijdView() {
+        //given
+        Map<UUID, Stadion> stadions = (Map<UUID, Stadion>) ReflectionTestUtils.getField(InMemDB.DB, "stadions");
+        Stadion stadion = stadions.values().stream().findFirst().get();
+        Wedstrijd wedstrijd = stadionDao.getByNaam(stadion.getNaam()).getWedstrijden().get(0);
+
+        BindingResult bindingResult = Mockito.mock(BindingResult.class);
+        ArgumentCaptor<String> fieldCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> errorCodeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> defaultMessageCaptor = ArgumentCaptor.forClass(String.class);
+        doNothing().when(bindingResult).rejectValue(fieldCaptor.capture(), errorCodeCaptor.capture(), defaultMessageCaptor.capture());
+        when(bindingResult.hasErrors()).thenReturn(true);
+
+        String email = "email@is.ok";
+        TicketsCommand ticketsCommand = new TicketsCommand();
+        ticketsCommand.setEmail(email);
+        ticketsCommand.setAantal("30");
+        ticketsCommand.setVoetbalCode1("NAN");
+        ticketsCommand.setVoetbalCode2("NAN2");
+
+        int aantalBeschikbareTicketsVoorTest = wedstrijd.getAantalBeschikbarePlaatsen();
+
+        //when
+        var result = subject.bestelTickets(wedstrijd.getId().toString(), ticketsCommand, bindingResult, Mockito.mock(Model.class));
+
+        //then
+        assertThat(result).isEqualTo("wedstrijdView");
+        assertThat(wedstrijdDao.get(wedstrijd.getId()).getAantalBeschikbarePlaatsen()).isEqualTo(aantalBeschikbareTicketsVoorTest);
+
+        List<Map<String,Object>> dbResults = jdbcTemplate.queryForList("select * from tickets t where t.email = '" + email + "'", new HashMap<>());
+        assertThat(dbResults.size()).isEqualTo(0);
+
+        assertThat(fieldCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1", "voetbalCode2", "aantal");
+        assertThat(errorCodeCaptor.getAllValues()).containsExactlyInAnyOrder("voetbalCode1.getal", "voetbalCode2.getal", "aantalTickets.groter");
+        assertThat(defaultMessageCaptor.getAllValues()).containsExactlyInAnyOrder("moet uit getallen bestaan",
+                "moet uit getallen bestaan",
+                "aantal tickets moet kleiner of gelijk zijn aan 25");
+
     }
 
 }

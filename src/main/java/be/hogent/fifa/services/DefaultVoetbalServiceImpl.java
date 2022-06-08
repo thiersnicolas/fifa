@@ -6,7 +6,6 @@ import be.hogent.fifa.domain.WedstrijdTicket;
 import be.hogent.fifa.repositories.StadionDao;
 import be.hogent.fifa.repositories.WedstrijdDao;
 import be.hogent.fifa.repositories.WedstrijdTicketDao;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,19 +67,21 @@ public class DefaultVoetbalServiceImpl implements VoetbalService {
         Map<Wedstrijd, List<WedstrijdTicket>> ticketsPerWedstrijd = teBestellenTickets.stream()
                 .collect(Collectors.groupingBy(WedstrijdTicket::getWedstrijd));
         List<Wedstrijd> wedstrijden = wedstrijdDao.findByIds(ticketsPerWedstrijd.keySet().stream()
-                .map(Wedstrijd::getId)
-                .collect(Collectors.toList())
-        );
+                .map(Wedstrijd::getId).collect(Collectors.toList()));
         return teBestellenTickets.stream()
                 .collect(Collectors.groupingBy(WedstrijdTicket::getWedstrijd))
                 .entrySet().stream()
                 .filter(ticketsPerWedstrijdEntry -> wedstrijden.contains(ticketsPerWedstrijdEntry.getKey()))
-                .flatMap(ticketsPerWedstrijdEntry -> IntStream.range(0, ticketsPerWedstrijdEntry.getKey()
-                                .getAantalBeschikbareTickets(ticketsPerWedstrijdEntry.getValue().size()))
-                        .mapToObj(i -> {
-                            wedstrijdTicketDao.insert(ticketsPerWedstrijdEntry.getValue().get(i));
-                            return ticketsPerWedstrijdEntry.getValue().get(i);
-                        })
-                ).collect(Collectors.toList());
+                .flatMap(ticketsPerWedstrijdEntry -> {
+                    wedstrijdDao.update(ticketsPerWedstrijdEntry.getKey()
+                            .verminderAantalBeschikbarePlaatsen(ticketsPerWedstrijdEntry.getKey()
+                                    .getAantalBeschikbareTickets(ticketsPerWedstrijdEntry.getValue().size())));
+                    return IntStream.range(0, ticketsPerWedstrijdEntry.getKey()
+                                    .getAantalBeschikbareTickets(ticketsPerWedstrijdEntry.getValue().size()))
+                            .mapToObj(i -> {
+                                wedstrijdTicketDao.insert(ticketsPerWedstrijdEntry.getValue().get(i));
+                                return ticketsPerWedstrijdEntry.getValue().get(i);
+                            });
+                }).collect(Collectors.toList());
     }
 }

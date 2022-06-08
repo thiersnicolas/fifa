@@ -22,12 +22,4 @@ public class JpaWedstrijdDao extends GenericDaoJpa<Wedstrijd> implements Wedstri
                 Wedstrijd.class).setParameter("ids", ids).getResultList();
 
     }
-
-    @Transactional(readOnly = true)
-    @Override
-    public Wedstrijd get(UUID id) {
-        TypedQuery<Wedstrijd> query = em.createQuery("SELECT w FROM Wedstrijd w WHERE w.id = :id", Wedstrijd.class);
-        query.setParameter("id", id);
-        return query.getSingleResult();
-    }
 }
